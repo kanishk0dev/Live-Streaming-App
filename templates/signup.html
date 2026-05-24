@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='signup.css') }}">
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="top-glow"></div>
+        <div class="bottom-glow"></div>
+
+        <div class="signup-box">
+            <div class="back-btn" onclick="window.location.href='/login-page'">← Back</div>
+
+            <h1>Signup</h1>
+            <p class="subtitle">Create your account and start your live profile.</p>
+
+            <div class="input-box">
+                <input type="email" id="email" placeholder="Enter Email" autocomplete="email">
+            </div>
+
+            <div class="input-box password-wrap">
+                <input type="password" id="password" placeholder="Create Password" autocomplete="new-password">
+                <span class="eye-icon" onclick="togglePassword()">👁</span>
+            </div>
+
+            <button class="proceed-btn" onclick="signupUser()">
+                Proceed
+            </button>
+
+            <p class="login-text">
+                Already have account?
+                <span onclick="goToLogin()">Login</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function goToLogin() {
+            window.location.href = "/login-page";
+        }
+
+        function togglePassword() {
+            const pw = document.getElementById("password");
+            pw.type = pw.type === "password" ? "text" : "password";
+        }
+
+        async function signupUser() {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!email || !password) {
+                showToast("Please fill all fields", "error");
+                return;
+            }
+
+            if (password.length < 6) {
+                showToast("Password must be at least 6 characters", "error");
+                return;
+            }
+
+            const btn = document.querySelector(".proceed-btn");
+            btn.textContent = "Creating Account...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Save email so login page auto-fills it
+                    localStorage.setItem("savedEmail", email);
+                    showToast("Account created! Please login.", "success");
+                    setTimeout(() => {
+                        window.location.href = "/login-page";
+                    }, 1000);
+                } else {
+                    showToast(data.message, "error");
+                    btn.textContent = "Proceed";
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast("Server Error", "error");
+                btn.textContent = "Proceed";
+                btn.disabled = false;
+            }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement("div");
+            toast.className = "toast " + type;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 400);
+            }, 2500);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") signupUser();
+        });
+    </script>
+</body>
+</html>

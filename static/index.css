@@ -1,0 +1,135 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #050505;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.mobile-container {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: #101010;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 25px;
+}
+
+@media screen and (min-width: 768px) {
+    .mobile-container {
+        min-height: 94vh;
+        border-radius: 32px;
+        border: 1px solid #232323;
+        box-shadow:
+            0 0 50px rgba(0,0,0,0.7),
+            0 0 120px rgba(255,62,120,0.08);
+    }
+}
+
+.top-glow {
+    position: absolute;
+    top: -140px;
+    width: 320px;
+    height: 320px;
+    background: rgba(255,62,120,0.28);
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+}
+
+.bottom-glow {
+    position: absolute;
+    bottom: -140px;
+    width: 280px;
+    height: 280px;
+    background: rgba(94,92,255,0.22);
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+}
+
+.content {
+    width: 100%;
+    text-align: center;
+    z-index: 2;
+}
+
+.logo-wrap {
+    margin-bottom: 28px;
+}
+
+.logo-icon {
+    font-size: 52px;
+    filter: drop-shadow(0 0 18px rgba(255,62,120,0.5));
+}
+
+h1 {
+    color: white;
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #fff 40%, #ff3e78);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 14px;
+    line-height: 26px;
+    margin-bottom: 50px;
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 17px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ff3e78, #ff6b57);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 14px;
+    box-shadow: 0 10px 28px rgba(255,62,120,0.38);
+    transition: 0.3s;
+    letter-spacing: 0.5px;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.93;
+}
+
+.secondary-btn {
+    width: 100%;
+    padding: 17px;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    background: transparent;
+    color: #aaa;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.secondary-btn:hover {
+    background: #1a1a1a;
+    border-color: #333;
+    color: white;
+}

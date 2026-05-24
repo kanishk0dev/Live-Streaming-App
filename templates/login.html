@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="top-glow"></div>
+        <div class="bottom-glow"></div>
+
+        <div class="login-box">
+            <div class="back-btn" onclick="window.location.href='/'">← Back</div>
+
+            <h1>Login</h1>
+            <p class="subtitle">Welcome back. Continue your live journey.</p>
+
+            <div class="input-box">
+                <input type="email" id="email" placeholder="Enter Email" autocomplete="email">
+            </div>
+
+            <div class="input-box">
+                <input type="password" id="password" placeholder="Enter Password" autocomplete="current-password">
+            </div>
+
+            <button class="join-btn" onclick="loginUser()">
+                Join
+            </button>
+
+            <p class="signup-text">
+                Don't have account?
+                <span onclick="goToSignup()">Signup</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        window.onload = () => {
+            const savedEmail = localStorage.getItem("savedEmail");
+            if (savedEmail) {
+                document.getElementById("email").value = savedEmail;
+                localStorage.removeItem("savedEmail");
+            }
+        };
+
+        function goToSignup() {
+            window.location.href = "/signup-page";
+        }
+
+        async function loginUser() {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!email || !password) {
+                showToast("Please fill all fields", "error");
+                return;
+            }
+
+            const btn = document.querySelector(".join-btn");
+            btn.textContent = "Joining...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem("userId", data.user_id);
+                    showToast("Login successful!", "success");
+                    setTimeout(() => {
+                        if (data.profile_complete) {
+                            window.location.href = "/landing-page";
+                        } else {
+                            window.location.href = "/profile-page";
+                        }
+                    }, 800);
+                } else {
+                    showToast(data.message, "error");
+                    btn.textContent = "Join";
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast("Server Error", "error");
+                btn.textContent = "Join";
+                btn.disabled = false;
+            }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement("div");
+            toast.className = "toast " + type;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 400);
+            }, 2500);
+        }
+
+        // Allow Enter key
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") loginUser();
+        });
+    </script>
+</body>
+</html>

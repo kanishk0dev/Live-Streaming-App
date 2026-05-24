@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}">
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="top-glow"></div>
+        <div class="bottom-glow"></div>
+
+        <div class="profile-box">
+            <h1>Complete Profile</h1>
+            <p class="subtitle">Add your details and upload a short intro video.</p>
+
+            <!-- Full Name -->
+            <div class="section-label">Your Name</div>
+            <div class="name-row">
+                <div class="input-box">
+                    <input type="text" id="firstName" placeholder="First Name">
+                </div>
+                <div class="input-box">
+                    <input type="text" id="lastName" placeholder="Last Name">
+                </div>
+            </div>
+
+            <!-- Profile Picture -->
+            <div class="section-label">Profile Picture</div>
+            <div class="upload-section">
+                <input type="file" id="profileImage" accept="image/*" hidden>
+
+                <div class="image-preview-wrap" id="imagePreviewWrap" onclick="uploadProfileImage()">
+                    <div class="image-placeholder" id="imagePlaceholder">
+                        <span>📷</span>
+                        <p>Tap to upload photo</p>
+                    </div>
+                    <img id="imagePreview" style="display:none;">
+                    <div class="image-overlay" id="imageOverlay" style="display:none;">Change Photo</div>
+                </div>
+            </div>
+
+            <!-- Video Section -->
+            <div class="section-label">Short Intro Video <span class="badge">10 sec</span></div>
+            <div class="upload-section">
+                <input type="file" id="videoUpload" accept="video/*" hidden>
+
+                <div class="video-preview-wrap">
+                    <!-- Camera Preview -->
+                    <video id="cameraPreview" autoplay muted playsinline style="display:none;"></video>
+                    <!-- Recorded / Uploaded Preview -->
+                    <video id="recordedPreview" controls style="display:none;"></video>
+                    <!-- Placeholder -->
+                    <div class="video-placeholder" id="videoPlaceholder">
+                        <span>🎬</span>
+                        <p>No video selected</p>
+                    </div>
+                </div>
+
+                <!-- Timer Bar -->
+                <div class="timer-bar-wrap" id="timerBarWrap" style="display:none;">
+                    <div class="timer-bar" id="timerBar"></div>
+                    <span class="timer-text" id="timerText">10s</span>
+                </div>
+            </div>
+
+            <!-- Video Buttons -->
+            <div class="video-buttons">
+                <button class="shoot-btn" id="shootBtn" onclick="handleShoot()">
+                    🔴 Shoot
+                </button>
+                <button class="upload-btn" onclick="uploadVideo()">
+                    📁 Upload
+                </button>
+            </div>
+
+            <!-- Go Live -->
+            <button class="live-btn" onclick="completeProfile()">
+                Go Live 🚀
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let recordedVideoBlob = null;
+        let selectedProfileImage = null;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        let timerInterval;
+        let activeStream = null;
+
+        // ========================= Guard =========================
+        const userId = localStorage.getItem("userId");
+        if (!userId) window.location.href = "/login-page";
+
+        // ========================= Profile Image =========================
+        function uploadProfileImage() {
+            document.getElementById("profileImage").click();
+        }
+
+        document.getElementById("profileImage").addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            selectedProfileImage = file;
+
+            const preview = document.getElementById("imagePreview");
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = "block";
+            document.getElementById("imagePlaceholder").style.display = "none";
+            document.getElementById("imageOverlay").style.display = "flex";
+        });
+
+        // ========================= Upload Video =========================
+        function uploadVideo() {
+            document.getElementById("videoUpload").click();
+        }
+
+        document.getElementById("videoUpload").addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Check video duration
+            const tempVideo = document.createElement("video");
+            tempVideo.src = URL.createObjectURL(file);
+            tempVideo.onloadedmetadata = () => {
+                if (tempVideo.duration > 11) {
+                    showToast("Video must be 10 seconds or less", "error");
+                    return;
+                }
+                recordedVideoBlob = file;
+                showVideoPreview(URL.createObjectURL(file));
+                showToast("Video uploaded!", "success");
+            };
+        });
+
+        function showVideoPreview(url) {
+            document.getElementById("videoPlaceholder").style.display = "none";
+            document.getElementById("cameraPreview").style.display = "none";
+            const rec = document.getElementById("recordedPreview");
+            rec.src = url;
+            rec.style.display = "block";
+        }
+
+        // ========================= Shoot Video =========================
+        async function handleShoot() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                activeStream = stream;
+
+                const camPreview = document.getElementById("cameraPreview");
+                document.getElementById("videoPlaceholder").style.display = "none";
+                document.getElementById("recordedPreview").style.display = "none";
+                camPreview.style.display = "block";
+                camPreview.srcObject = stream;
+
+                recordedChunks = [];
+
+                // Try different codecs
+                const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+                    ? "video/webm;codecs=vp9"
+                    : MediaRecorder.isTypeSupported("video/webm")
+                    ? "video/webm"
+                    : "video/mp4";
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: mimeType });
+                    recordedVideoBlob = blob;
+                    showVideoPreview(URL.createObjectURL(blob));
+                    stopAllTracks(stream);
+                    clearTimerBar();
+                    showToast("Video recorded!", "success");
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById("shootBtn").innerHTML = "⏹ Stop";
+                document.getElementById("shootBtn").classList.add("recording");
+
+                // Show timer bar
+                startTimerBar(10);
+
+                // Auto-stop after 10 sec
+                setTimeout(() => {
+                    if (isRecording) stopRecording();
+                }, 10000);
+
+            } catch (error) {
+                console.error(error);
+                showToast("Camera permission denied", "error");
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+            document.getElementById("shootBtn").innerHTML = "🔴 Shoot";
+            document.getElementById("shootBtn").classList.remove("recording");
+            clearTimerBar();
+        }
+
+        function stopAllTracks(stream) {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        }
+
+        // ========================= Timer Bar =========================
+        function startTimerBar(seconds) {
+            const wrap = document.getElementById("timerBarWrap");
+            const bar = document.getElementById("timerBar");
+            const text = document.getElementById("timerText");
+            wrap.style.display = "flex";
+            bar.style.width = "100%";
+            bar.style.transition = "none";
+            let elapsed = 0;
+
+            timerInterval = setInterval(() => {
+                elapsed++;
+                const left = seconds - elapsed;
+                text.textContent = left + "s";
+                const pct = ((seconds - elapsed) / seconds) * 100;
+                bar.style.transition = "width 1s linear";
+                bar.style.width = pct + "%";
+                if (elapsed >= seconds) clearInterval(timerInterval);
+            }, 1000);
+        }
+
+        function clearTimerBar() {
+            clearInterval(timerInterval);
+            document.getElementById("timerBarWrap").style.display = "none";
+        }
+
+        // ========================= Complete Profile =========================
+        async function completeProfile() {
+            const firstName = document.getElementById("firstName").value.trim();
+            const lastName = document.getElementById("lastName").value.trim();
+
+            if (!firstName || !lastName) {
+                showToast("Please enter your full name", "error");
+                return;
+            }
+            if (!selectedProfileImage) {
+                showToast("Please upload a profile picture", "error");
+                return;
+            }
+            if (!recordedVideoBlob) {
+                showToast("Please add a short intro video", "error");
+                return;
+            }
+
+            const btn = document.querySelector(".live-btn");
+            btn.textContent = "Saving...";
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append("first_name", firstName);
+            formData.append("last_name", lastName);
+            formData.append("profile_image", selectedProfileImage);
+            formData.append("short_video", recordedVideoBlob, "video.webm");
+
+            try {
+                const response = await fetch(`/complete-profile/${userId}`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast("Profile complete! Going live...", "success");
+                    setTimeout(() => {
+                        window.location.href = "/landing-page";
+                    }, 1000);
+                } else {
+                    showToast(data.message, "error");
+                    btn.textContent = "Go Live 🚀";
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast("Server Error", "error");
+                btn.textContent = "Go Live 🚀";
+                btn.disabled = false;
+            }
+        }
+
+        // ========================= Toast =========================
+        function showToast(msg, type) {
+            const toast = document.createElement("div");
+            toast.className = "toast " + type;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 400);
+            }, 2800);
+        }
+    </script>
+</body>
+</html>

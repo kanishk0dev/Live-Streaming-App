@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="top-glow"></div>
+        <div class="bottom-glow"></div>
+
+        <div class="content">
+            <div class="logo-wrap">
+                <div class="logo-icon">📡</div>
+            </div>
+
+            <h1>WELCOME</h1>
+
+            <p class="subtitle">
+                Create your profile, upload your intro video,<br>and go live instantly.
+            </p>
+
+            <button class="primary-btn" onclick="goToLogin()">
+                Login / Signup
+            </button>
+
+            <button class="secondary-btn" onclick="continueGuest()">
+                Continue as Guest
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function goToLogin() {
+            window.location.href = "/login-page";
+        }
+        function continueGuest() {
+            localStorage.removeItem("userId");
+            window.location.href = "/landing-page";
+        }
+    </script>
+</body>
+</html>

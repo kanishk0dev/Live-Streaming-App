@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Users</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="top-glow"></div>
+        <div class="bottom-glow"></div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="app-logo">📡</div>
+                <h1>Live Users</h1>
+            </div>
+            <div class="header-right" id="headerRight"></div>
+        </div>
+
+        <!-- Live Count -->
+        <p class="live-count" id="liveCount">Discovering creators...</p>
+
+        <!-- Users List -->
+        <div class="users-container" id="usersContainer">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading live users...</p>
+            </div>
+        </div>
+
+        <!-- Floating Go Live Button -->
+        <div class="go-live-wrap">
+            <button id="goLiveBtn" class="go-live-btn" onclick="goLive()">
+                <span id="goLiveIcon">📷</span>
+            </button>
+            <span class="go-live-label" id="goLiveLabel">Go Live</span>
+        </div>
+
+        <!-- Guest Tooltip -->
+        <div class="guest-tooltip" id="guestTooltip" style="display:none;">
+            Login to start a Live Stream
+        </div>
+    </div>
+
+    <script>
+        const userId = localStorage.getItem("userId");
+        const goLiveBtn = document.getElementById("goLiveBtn");
+        const goLiveIcon = document.getElementById("goLiveIcon");
+        const goLiveLabel = document.getElementById("goLiveLabel");
+        const headerRight = document.getElementById("headerRight");
+        const guestTooltip = document.getElementById("guestTooltip");
+
+        // ========================= Header =========================
+        if (userId) {
+            headerRight.innerHTML = `
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            `;
+        } else {
+            headerRight.innerHTML = `
+                <button class="login-header-btn" onclick="window.location.href='/login-page'">Login</button>
+            `;
+            // Guest mode: disable go live
+            goLiveBtn.classList.add("disabled");
+            goLiveIcon.textContent = "🚫";
+            goLiveLabel.textContent = "Login to Go Live";
+        }
+
+        function logout() {
+            localStorage.removeItem("userId");
+            window.location.href = "/";
+        }
+
+        // ========================= Load Live Users =========================
+        async function loadUsers() {
+            try {
+                const response = await fetch("/live-users");
+                const data = await response.json();
+                const container = document.getElementById("usersContainer");
+                const liveCount = document.getElementById("liveCount");
+
+                if (!data.users || data.users.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📡</div>
+                            <p>No live users yet</p>
+                            <span>Be the first to go live!</span>
+                        </div>
+                    `;
+                    liveCount.textContent = "No one live right now";
+                    return;
+                }
+
+                liveCount.innerHTML = `<span class="live-dot-inline"></span> ${data.users.length} user${data.users.length > 1 ? 's' : ''} live now`;
+
+                container.innerHTML = "";
+                data.users.forEach(user => {
+                    const card = document.createElement("div");
+                    card.className = "user-card";
+                    card.innerHTML = `
+                        <div class="left-user">
+                            <div class="avatar-wrap">
+                                <img src="${user.profile_image}" alt="${user.first_name}" onerror="this.src='/static/default-avatar.png'">
+                                <div class="online-ring"></div>
+                            </div>
+                            <div class="user-details">
+                                <h2>${user.first_name} ${user.last_name}</h2>
+                                <div class="live-badge">
+                                    <span class="live-dot-small"></span> LIVE NOW
+                                </div>
+                            </div>
+                        </div>
+                        <button class="watch-btn" onclick="watchUser(${user.id})">Watch</button>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById("usersContainer").innerHTML = `
+                    <div class="empty-state">
+                        <p>Failed to load users</p>
+                    </div>
+                `;
+            }
+        }
+
+        function watchUser(id) {
+            // Placeholder: in a real app, would open live stream
+            showToast("Joining live stream...", "info");
+        }
+
+        // ========================= Go Live =========================
+        function goLive() {
+            if (!userId) {
+                guestTooltip.style.display = "block";
+                guestTooltip.classList.add("show");
+                setTimeout(() => {
+                    guestTooltip.classList.remove("show");
+                    setTimeout(() => guestTooltip.style.display = "none", 400);
+                }, 2500);
+                return;
+            }
+            window.location.href = "/go-live-page";
+        }
+
+        // ========================= Toast =========================
+        function showToast(msg, type) {
+            const toast = document.createElement("div");
+            toast.className = "toast " + (type || "");
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 400);
+            }, 2500);
+        }
+
+        // Start
+        loadUsers();
+        // Refresh every 30s
+        setInterval(loadUsers, 30000);
+    </script>
+</body>
+</html>

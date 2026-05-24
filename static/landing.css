@@ -1,0 +1,427 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #050505;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.mobile-container {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: #101010;
+    position: relative;
+    padding: 0 0 100px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+@media screen and (min-width: 768px) {
+    body { align-items: center; overflow: hidden; }
+
+    .mobile-container {
+        min-height: 94vh;
+        max-height: 96vh;
+        border-radius: 32px;
+        border: 1px solid #232323;
+        box-shadow:
+            0 0 50px rgba(0,0,0,0.7),
+            0 0 120px rgba(255,62,120,0.08);
+        overflow-y: auto;
+        scrollbar-width: none;
+    }
+
+    .mobile-container::-webkit-scrollbar { display: none; }
+}
+
+.top-glow {
+    position: absolute;
+    top: -120px;
+    right: -80px;
+    width: 280px;
+    height: 280px;
+    background: rgba(255,62,120,0.2);
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bottom-glow {
+    position: absolute;
+    bottom: -120px;
+    left: -60px;
+    width: 260px;
+    height: 260px;
+    background: rgba(94,92,255,0.18);
+    border-radius: 50%;
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Header */
+.header {
+    position: sticky;
+    top: 0;
+    background: rgba(16,16,16,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    border-bottom: 1px solid #1e1e1e;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-logo { font-size: 22px; }
+
+.header h1 {
+    color: white;
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.logout-btn, .login-header-btn {
+    background: #1e1e1e;
+    border: 1px solid #2d2d2d;
+    color: #aaa;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.logout-btn:hover, .login-header-btn:hover {
+    border-color: #ff3e78;
+    color: #ff3e78;
+}
+
+/* Live Count */
+.live-count {
+    color: #666;
+    font-size: 13px;
+    padding: 14px 22px 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.live-dot-inline {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 8px #00ff88;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Users Container */
+.users-container {
+    padding: 12px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    z-index: 2;
+}
+
+/* User Card */
+.user-card {
+    width: 100%;
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 20px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.3s;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-card:hover {
+    border-color: #2d2d2d;
+    background: #1a1a1a;
+}
+
+/* Left User */
+.left-user {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Avatar */
+.avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.avatar-wrap img {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2.5px solid #ff3e78;
+    display: block;
+}
+
+.online-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,62,120,0.3);
+    animation: ring-pulse 2s infinite;
+}
+
+@keyframes ring-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.08); opacity: 0.15; }
+}
+
+/* User Details */
+.user-details h2 {
+    color: white;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ff3e78;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.live-dot-small {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ff3e78;
+    box-shadow: 0 0 8px #ff3e78;
+    animation: blink 1.5s infinite;
+}
+
+/* Watch Button */
+.watch-btn {
+    background: transparent;
+    border: 1px solid #ff3e78;
+    color: #ff3e78;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.25s;
+    flex-shrink: 0;
+}
+
+.watch-btn:hover {
+    background: #ff3e78;
+    color: white;
+}
+
+/* Empty / Loading State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #555;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 14px;
+    filter: grayscale(1);
+    opacity: 0.4;
+}
+
+.empty-state p {
+    color: #555;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.empty-state span {
+    color: #444;
+    font-size: 13px;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #555;
+}
+
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #222;
+    border-top-color: #ff3e78;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Floating Go Live Button */
+.go-live-wrap {
+    position: fixed;
+    bottom: 30px;
+    right: 50%;
+    transform: translateX(175px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    z-index: 20;
+}
+
+@media screen and (max-width: 767px) {
+    .go-live-wrap {
+        right: 22px;
+        transform: none;
+    }
+}
+
+.go-live-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #ff3e78, #ff6b57);
+    color: white;
+    font-size: 26px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+        0 10px 28px rgba(255,62,120,0.5),
+        0 0 0 4px rgba(255,62,120,0.12);
+    transition: 0.3s;
+}
+
+.go-live-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 12px 32px rgba(255,62,120,0.6), 0 0 0 6px rgba(255,62,120,0.15);
+}
+
+.go-live-btn.disabled {
+    background: #222;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.go-live-btn.disabled:hover { transform: none; }
+
+.go-live-label {
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+
+/* Guest tooltip */
+.guest-tooltip {
+    position: fixed;
+    bottom: 115px;
+    right: 50%;
+    transform: translateX(175px);
+    background: #1e1e1e;
+    border: 1px solid #333;
+    color: white;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    z-index: 30;
+    opacity: 0;
+    transition: 0.3s;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+@media screen and (max-width: 767px) {
+    .guest-tooltip {
+        right: 16px;
+        transform: none;
+    }
+}
+
+.guest-tooltip.show { opacity: 1; }
+.guest-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    right: 28px;
+    width: 12px;
+    height: 12px;
+    background: #1e1e1e;
+    border-right: 1px solid #333;
+    border-bottom: 1px solid #333;
+    transform: rotate(45deg);
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e1e1e;
+    color: white;
+    padding: 13px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 9999;
+    opacity: 0;
+    transition: 0.35s;
+    border: 1px solid #333;
+    white-space: nowrap;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.info { border-color: #5e5cff; color: #aaaaff; }
