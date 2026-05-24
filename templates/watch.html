@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watching Live</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='watch.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+<div class="mobile-container">
+
+    <!-- Stream Video -->
+    <video id="remoteVideo" autoplay playsinline></video>
+
+    <!-- Connecting overlay -->
+    <div class="overlay" id="overlay">
+        <div class="spinner"></div>
+        <p id="overlayText">Connecting to stream...</p>
+    </div>
+
+    <!-- Stream ended overlay -->
+    <div class="ended-overlay" id="endedOverlay" style="display:none;">
+        <div class="ended-icon">📡</div>
+        <h2>Stream Ended</h2>
+        <p>The streamer has ended their live broadcast.</p>
+        <button onclick="window.location.href='/landing-page'">Back to Live Users</button>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="leaveStream()">✕</button>
+        <div class="streamer-info" id="streamerInfo">
+            <img id="streamerAvatar" src="" alt="">
+            <div>
+                <div class="streamer-name" id="streamerName">Loading...</div>
+                <div class="live-badge">
+                    <span class="live-dot"></span> LIVE
+                </div>
+            </div>
+        </div>
+        <div class="viewers-pill">
+            <span>👁</span>
+            <span id="viewerCount">—</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Get streamer ID from URL: /watch-page?id=123
+    const params     = new URLSearchParams(window.location.search);
+    const streamerId = params.get('id');
+
+    if (!streamerId) window.location.href = '/landing-page';
+
+    const socket      = io();
+    let   streamerSid = null;   // socket ID of the streamer
+    let   pc          = null;   // our RTCPeerConnection
+
+    // ---- DOM ----
+    const remoteVideo  = document.getElementById('remoteVideo');
+    const overlay      = document.getElementById('overlay');
+    const overlayText  = document.getElementById('overlayText');
+    const endedOverlay = document.getElementById('endedOverlay');
+
+    // ======================
+    // Load streamer info
+    // ======================
+    async function loadStreamerInfo() {
+        try {
+            const res  = await fetch(`/get-user/${streamerId}`);
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('streamerName').textContent =
+                    data.user.first_name + ' ' + data.user.last_name;
+                document.getElementById('streamerAvatar').src =
+                    data.user.profile_image;
+            }
+        } catch(e) {}
+    }
+
+    // ======================
+    // Join stream room as viewer
+    // ======================
+    function joinStream() {
+        socket.emit('join_stream', { room_id: streamerId, role: 'viewer' });
+    }
+
+    // ======================
+    // WebRTC — handle incoming offer from streamer
+    // ======================
+    async function handleOffer(sdp, senderSid) {
+        streamerSid = senderSid;
+
+        pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+        // When we get remote tracks, show the video
+        pc.ontrack = (e) => {
+            if (e.streams && e.streams[0]) {
+                remoteVideo.srcObject = e.streams[0];
+                hideOverlay();
+            }
+        };
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                socket.emit('ice_candidate', { target_sid: streamerSid, candidate: e.candidate });
+            }
+        };
+
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') hideOverlay();
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                showOverlay('Connection lost...');
+            }
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit('answer', { target_sid: streamerSid, sdp: pc.localDescription });
+    }
+
+    // ======================
+    // Leave stream
+    // ======================
+    function leaveStream() {
+        socket.emit('leave_stream', { room_id: streamerId });
+        if (pc) pc.close();
+        window.location.href = '/landing-page';
+    }
+
+    function hideOverlay() {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 400);
+    }
+
+    function showOverlay(msg) {
+        overlayText.textContent = msg || 'Connecting...';
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+    }
+
+    // ======================
+    // Socket events
+    // ======================
+    socket.on('joined_as_viewer', () => {
+        overlayText.textContent = 'Waiting for stream...';
+    });
+
+    socket.on('stream_not_found', () => {
+        overlayText.textContent = 'Stream not found or has ended.';
+        setTimeout(() => window.location.href = '/landing-page', 2000);
+    });
+
+    socket.on('offer', async ({ sdp, sender_sid }) => {
+        await handleOffer(sdp, sender_sid);
+    });
+
+    socket.on('ice_candidate', async ({ candidate, sender_sid }) => {
+        if (pc && candidate) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
+        }
+    });
+
+    socket.on('viewer_count', ({ count }) => {
+        document.getElementById('viewerCount').textContent = count;
+    });
+
+    socket.on('stream_ended', () => {
+        if (pc) pc.close();
+        overlay.style.display = 'none';
+        endedOverlay.style.display = 'flex';
+    });
+
+    // Start
+    loadStreamerInfo();
+    joinStream();
+</script>
+</body>
+</html>

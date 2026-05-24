@@ -5,232 +5,272 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Go Live</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='go-live.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="mobile-container">
+<div class="mobile-container">
 
-        <!-- Camera Feed -->
-        <video id="liveCamera" autoplay playsinline muted></video>
+    <video id="liveCamera" autoplay playsinline muted></video>
 
-        <!-- No Camera Fallback -->
-        <div class="no-camera" id="noCamera" style="display:none;">
-            <div class="no-camera-icon">📷</div>
-            <p>Camera not available</p>
-        </div>
-
-        <!-- Top Bar -->
-        <div class="top-bar">
-            <button class="back-btn" onclick="exitLive()">✕</button>
-
-            <div class="status-pill" id="statusPill">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">OFFLINE</span>
-            </div>
-
-            <div class="timer-display" id="timerDisplay" style="display:none;">
-                <span id="liveTimer">00:00</span>
-            </div>
-        </div>
-
-        <!-- Side Controls -->
-        <div class="side-controls">
-            <button class="side-btn" onclick="flipCamera()" title="Flip Camera">🔄</button>
-            <button class="side-btn" onclick="toggleMute()" id="muteBtn" title="Mute">🎤</button>
-            <button class="side-btn" onclick="toggleFlash()" id="flashBtn" title="Flash">💡</button>
-        </div>
-
-        <!-- Viewers Count -->
-        <div class="viewers-wrap" id="viewersWrap" style="display:none;">
-            <span>👁</span>
-            <span id="viewerCount">0</span>
-        </div>
-
-        <!-- Bottom Controls -->
-        <div class="bottom-controls">
-            <div class="live-btn-wrap">
-                <button id="liveBtn" class="live-btn" onclick="toggleLive()">
-                    <div class="live-btn-inner" id="liveBtnInner">
-                        <div class="live-btn-icon"></div>
-                    </div>
-                </button>
-                <span class="live-btn-label" id="liveBtnLabel">Tap to Go Live</span>
-            </div>
-        </div>
-
+    <div class="no-camera" id="noCamera" style="display:none;">
+        <div class="no-camera-icon">📷</div>
+        <p>Camera not available</p>
     </div>
 
-    <script>
-        let stream = null;
-        let isLive = false;
-        let isMuted = false;
-        let facingMode = "user";
-        let timerInterval = null;
-        let seconds = 0;
-        let viewerSimInterval = null;
-        let viewerCount = 0;
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <button class="back-btn" onclick="exitLive()">✕</button>
+        <div class="status-pill" id="statusPill">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">OFFLINE</span>
+        </div>
+        <div class="timer-display" id="timerDisplay" style="display:none;">
+            <span id="liveTimer">00:00</span>
+        </div>
+    </div>
 
-        const camera = document.getElementById("liveCamera");
-        const liveBtn = document.getElementById("liveBtn");
-        const liveBtnInner = document.getElementById("liveBtnInner");
-        const liveBtnLabel = document.getElementById("liveBtnLabel");
-        const statusPill = document.getElementById("statusPill");
-        const statusDot = document.getElementById("statusDot");
-        const statusText = document.getElementById("statusText");
-        const timerDisplay = document.getElementById("timerDisplay");
-        const liveTimer = document.getElementById("liveTimer");
-        const viewersWrap = document.getElementById("viewersWrap");
-        const muteBtn = document.getElementById("muteBtn");
+    <!-- Side Controls -->
+    <div class="side-controls">
+        <button class="side-btn" onclick="flipCamera()" title="Flip">🔄</button>
+        <button class="side-btn" id="muteBtn" onclick="toggleMute()" title="Mute">🎤</button>
+    </div>
 
-        // Guard: must be logged in
-        const userId = localStorage.getItem("userId");
-        if (!userId) window.location.href = "/login-page";
+    <!-- Viewers -->
+    <div class="viewers-wrap" id="viewersWrap" style="display:none;">
+        <span>👁</span>
+        <span id="viewerCount">0</span>
+    </div>
 
-        // ========================= Start Camera =========================
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode },
-                    audio: true
-                });
-                camera.srcObject = stream;
-                camera.style.display = "block";
-                document.getElementById("noCamera").style.display = "none";
-            } catch (error) {
-                console.error(error);
-                camera.style.display = "none";
-                document.getElementById("noCamera").style.display = "flex";
-            }
-        }
+    <!-- Bottom -->
+    <div class="bottom-controls">
+        <div class="live-btn-wrap">
+            <button id="liveBtn" class="live-btn" onclick="toggleLive()">
+                <div class="live-btn-inner" id="liveBtnInner">
+                    <div class="live-btn-icon"></div>
+                </div>
+            </button>
+            <span class="live-btn-label" id="liveBtnLabel">Tap to Go Live</span>
+        </div>
+    </div>
 
-        // ========================= Toggle Live =========================
-        function toggleLive() {
-            if (!isLive) {
-                startLive();
-            } else {
-                stopLive();
-            }
-        }
+</div>
 
-        function startLive() {
-            if (!stream) {
-                showToast("Camera not ready", "error");
-                return;
-            }
+<script>
+    const userId   = localStorage.getItem('userId');
+    if (!userId) window.location.href = '/login-page';
 
-            // Tell server this user is now live
-            fetch(`/start-live/${userId}`, { method: 'POST' })
-                .catch(err => console.error('start-live error:', err));
+    // ---- State ----
+    let stream        = null;
+    let isLive        = false;
+    let isMuted       = false;
+    let facingMode    = 'user';
+    let timerInterval = null;
+    let seconds       = 0;
 
-            isLive = true;
-            liveBtnInner.classList.add("is-live");
-            liveBtnLabel.textContent = "Tap to Stop";
-            liveBtn.classList.add("active");
+    // peer connections: { viewer_sid: RTCPeerConnection }
+    const peers = {};
 
-            statusPill.classList.add("live");
-            statusDot.classList.add("live");
-            statusText.textContent = "LIVE";
+    // ---- Socket ----
+    const socket = io();
 
-            timerDisplay.style.display = "block";
-            seconds = 0;
-            timerInterval = setInterval(() => {
-                seconds++;
-                liveTimer.textContent = formatTime(seconds);
-            }, 1000);
+    // ---- DOM ----
+    const camera      = document.getElementById('liveCamera');
+    const liveBtn     = document.getElementById('liveBtn');
+    const liveBtnInner= document.getElementById('liveBtnInner');
+    const liveBtnLabel= document.getElementById('liveBtnLabel');
+    const statusPill  = document.getElementById('statusPill');
+    const statusDot   = document.getElementById('statusDot');
+    const statusText  = document.getElementById('statusText');
+    const timerDisplay= document.getElementById('timerDisplay');
+    const liveTimer   = document.getElementById('liveTimer');
+    const viewersWrap = document.getElementById('viewersWrap');
+    const viewerCount = document.getElementById('viewerCount');
 
-            viewersWrap.style.display = "flex";
-            viewerCount = 0;
-            viewerSimInterval = setInterval(() => {
-                viewerCount += Math.floor(Math.random() * 3);
-                document.getElementById("viewerCount").textContent = viewerCount;
-            }, 4000);
-
-            showToast("You're Live! 🔴", "live");
-        }
-
-        function stopLive() {
-            // Tell server this user stopped live
-            fetch(`/stop-live/${userId}`, { method: 'POST' })
-                .catch(err => console.error('stop-live error:', err));
-
-            isLive = false;
-            liveBtnInner.classList.remove("is-live");
-            liveBtnLabel.textContent = "Tap to Go Live";
-            liveBtn.classList.remove("active");
-
-            statusPill.classList.remove("live");
-            statusDot.classList.remove("live");
-            statusText.textContent = "OFFLINE";
-
-            timerDisplay.style.display = "none";
-            clearInterval(timerInterval);
-
-            viewersWrap.style.display = "none";
-            clearInterval(viewerSimInterval);
-
-            showToast("Live ended", "info");
-        }
-
-        // ========================= Flip Camera =========================
-        async function flipCamera() {
-            facingMode = facingMode === "user" ? "environment" : "user";
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-            }
-            await startCamera();
-        }
-
-        // ========================= Mute =========================
-        function toggleMute() {
-            if (!stream) return;
-            isMuted = !isMuted;
-            stream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-            muteBtn.textContent = isMuted ? "🔇" : "🎤";
-            muteBtn.classList.toggle("active-ctrl", isMuted);
-        }
-
-        // ========================= Flash Placeholder =========================
-        function toggleFlash() {
-            showToast("Flash not supported on this device", "info");
-        }
-
-        // ========================= Exit =========================
-        function exitLive() {
-            if (isLive) stopLive();
+    // ======================
+    // Camera
+    // ======================
+    async function startCamera() {
+        try {
             if (stream) stream.getTracks().forEach(t => t.stop());
-            window.location.href = "/landing-page";
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
+            camera.srcObject = stream;
+            camera.style.display = 'block';
+            document.getElementById('noCamera').style.display = 'none';
+        } catch (e) {
+            camera.style.display = 'none';
+            document.getElementById('noCamera').style.display = 'flex';
+            showToast('Camera permission denied', 'error');
         }
+    }
 
-        // Safety net: stop live if user closes tab or navigates away
-        window.addEventListener("beforeunload", () => {
-            if (isLive) {
-                // Use sendBeacon for reliable fire-and-forget on page close
-                navigator.sendBeacon(`/stop-live/${userId}`);
+    async function flipCamera() {
+        facingMode = facingMode === 'user' ? 'environment' : 'user';
+        await startCamera();
+        // Update existing peer connections with new tracks
+        for (const [sid, pc] of Object.entries(peers)) {
+            const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            const vTrack = stream.getVideoTracks()[0];
+            if (sender && vTrack) sender.replaceTrack(vTrack);
+        }
+    }
+
+    function toggleMute() {
+        if (!stream) return;
+        isMuted = !isMuted;
+        stream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+        document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🎤';
+        document.getElementById('muteBtn').classList.toggle('active-ctrl', isMuted);
+    }
+
+    // ======================
+    // Go Live toggle
+    // ======================
+    async function toggleLive() {
+        if (!isLive) await startLive();
+        else stopLive();
+    }
+
+    async function startLive() {
+        if (!stream) { showToast('Camera not ready', 'error'); return; }
+
+        // Register live session on server
+        const res  = await fetch(`/start-live/${userId}`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) { showToast(data.message, 'error'); return; }
+
+        // Join Socket.IO room as host
+        socket.emit('join_stream', { room_id: userId, role: 'host' });
+
+        isLive = true;
+        liveBtnInner.classList.add('is-live');
+        liveBtnLabel.textContent = 'Tap to Stop';
+        liveBtn.classList.add('active');
+        statusPill.classList.add('live');
+        statusDot.classList.add('live');
+        statusText.textContent = 'LIVE';
+
+        timerDisplay.style.display = 'block';
+        seconds = 0;
+        timerInterval = setInterval(() => {
+            seconds++;
+            liveTimer.textContent = formatTime(seconds);
+        }, 1000);
+
+        viewersWrap.style.display = 'flex';
+        showToast("You're Live! 🔴", 'live');
+    }
+
+    function stopLive() {
+        // Notify server
+        fetch(`/stop-live/${userId}`, { method: 'POST' });
+
+        // Close all peer connections
+        for (const pc of Object.values(peers)) pc.close();
+        Object.keys(peers).forEach(k => delete peers[k]);
+
+        isLive = false;
+        liveBtnInner.classList.remove('is-live');
+        liveBtnLabel.textContent = 'Tap to Go Live';
+        liveBtn.classList.remove('active');
+        statusPill.classList.remove('live');
+        statusDot.classList.remove('live');
+        statusText.textContent = 'OFFLINE';
+        timerDisplay.style.display = 'none';
+        clearInterval(timerInterval);
+        viewersWrap.style.display = 'none';
+        viewerCount.textContent = '0';
+
+        showToast('Live ended', 'info');
+    }
+
+    function exitLive() {
+        if (isLive) stopLive();
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        window.location.href = '/landing-page';
+    }
+
+    // ======================
+    // WebRTC — create offer for each new viewer
+    // ======================
+    async function createOffer(viewerSid) {
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        peers[viewerSid] = pc;
+
+        // Add all local tracks
+        stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                socket.emit('ice_candidate', { target_sid: viewerSid, candidate: e.candidate });
             }
-        });
+        };
 
-        // ========================= Helpers =========================
-        function formatTime(s) {
-            const m = Math.floor(s / 60).toString().padStart(2, "0");
-            const sec = (s % 60).toString().padStart(2, "0");
-            return `${m}:${sec}`;
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                pc.close();
+                delete peers[viewerSid];
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('offer', { target_sid: viewerSid, sdp: pc.localDescription });
+    }
+
+    // ======================
+    // Socket events
+    // ======================
+    socket.on('viewer_joined', async ({ sid }) => {
+        await createOffer(sid);
+    });
+
+    socket.on('viewer_left', ({ sid }) => {
+        if (peers[sid]) {
+            peers[sid].close();
+            delete peers[sid];
         }
+    });
 
-        function showToast(msg, type) {
-            const existing = document.querySelector(".toast");
-            if (existing) existing.remove();
-            const toast = document.createElement("div");
-            toast.className = "toast " + (type || "");
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.classList.add("show"), 10);
-            setTimeout(() => {
-                toast.classList.remove("show");
-                setTimeout(() => toast.remove(), 400);
-            }, 2500);
+    socket.on('answer', async ({ sdp, sender_sid }) => {
+        const pc = peers[sender_sid];
+        if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    });
+
+    socket.on('ice_candidate', async ({ candidate, sender_sid }) => {
+        const pc = peers[sender_sid];
+        if (pc && candidate) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
         }
+    });
 
-        // Start camera on load
-        startCamera();
-    </script>
+    socket.on('viewer_count', ({ count }) => {
+        viewerCount.textContent = count;
+    });
+
+    // ======================
+    // Helpers
+    // ======================
+    function formatTime(s) {
+        return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    }
+
+    function showToast(msg, type) {
+        const old = document.querySelector('.toast');
+        if (old) old.remove();
+        const t = document.createElement('div');
+        t.className = 'toast ' + (type||'');
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.classList.add('show'), 10);
+        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2500);
+    }
+
+    // Safety: stop live if tab is closed
+    window.addEventListener('beforeunload', () => {
+        if (isLive) navigator.sendBeacon(`/stop-live/${userId}`);
+    });
+
+    startCamera();
+</script>
 </body>
 </html>
