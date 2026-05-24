@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 import sqlite3
 import os
 
+
 # =========================================
 # APP CONFIG
 # =========================================
