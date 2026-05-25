@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,8 +6,8 @@ from werkzeug.utils import secure_filename
 
 import sqlite3
 import os
-import cloudinary
-import cloudinary.uploader
+import base64
+import mimetypes
 
 # =========================================
 # APP CONFIG
@@ -19,37 +19,16 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # =========================================
-# CLOUDINARY CONFIG
-# =========================================
-
-cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    api_key    = os.environ.get('CLOUDINARY_API_KEY'),
-    api_secret = os.environ.get('CLOUDINARY_API_SECRET')
-)
-
-# =========================================
-# LOCAL UPLOAD FOLDERS (fallback for dev)
-# =========================================
-
-UPLOAD_IMAGE = 'uploads/images'
-UPLOAD_VIDEO = 'uploads/videos'
-
-os.makedirs(UPLOAD_IMAGE, exist_ok=True)
-os.makedirs(UPLOAD_VIDEO, exist_ok=True)
-
-# =========================================
 # IN-MEMORY: rooms[streamer_user_id] = set of viewer socket_ids
-# This tracks who is watching each stream right now
 # =========================================
 
-rooms = {}   # { streamer_user_id(str): set(socket_id) }
+rooms = {}
 
 # =========================================
 # DATABASE
 # =========================================
 
-DATABASE = 'database.db'
+DATABASE = os.environ.get('DATABASE_PATH', 'database.db')
 
 
 def connect_db():
@@ -69,8 +48,10 @@ def init_db():
             password      TEXT,
             first_name    TEXT,
             last_name     TEXT,
-            profile_image TEXT,
-            short_video   TEXT
+            profile_image BLOB,
+            profile_image_mime TEXT,
+            short_video   BLOB,
+            short_video_mime   TEXT
         )
     ''')
 
@@ -93,71 +74,9 @@ init_db()
 # HELPERS
 # =========================================
 
-def is_cloudinary_configured():
-    return all([
-        os.environ.get('CLOUDINARY_CLOUD_NAME'),
-        os.environ.get('CLOUDINARY_API_KEY'),
-        os.environ.get('CLOUDINARY_API_SECRET'),
-    ])
-
-
-def upload_image(file, user_id):
-    if is_cloudinary_configured():
-        result = cloudinary.uploader.upload(
-            file,
-            folder='livestream/images',
-            public_id=f'user_{user_id}_profile',
-            overwrite=True,
-            resource_type='image'
-        )
-        return result['secure_url']
-    else:
-        filename = secure_filename(f"{user_id}_{file.filename}")
-        path = os.path.join(UPLOAD_IMAGE, filename)
-        file.save(path)
-        return path
-
-
-def upload_video(file, user_id):
-    if is_cloudinary_configured():
-        result = cloudinary.uploader.upload(
-            file,
-            folder='livestream/videos',
-            public_id=f'user_{user_id}_video',
-            overwrite=True,
-            resource_type='video'
-        )
-        return result['secure_url']
-    else:
-        filename = secure_filename(f"{user_id}_{file.filename}")
-        path = os.path.join(UPLOAD_VIDEO, filename)
-        file.save(path)
-        return path
-
-
-def image_url(raw_path):
-    if raw_path and raw_path.startswith('http'):
-        return raw_path
-    return '/' + raw_path if raw_path else ''
-
-
 def broadcast_viewer_count(room_id):
-    """Emit updated viewer count to everyone in the room."""
     count = len(rooms.get(room_id, set()))
     socketio.emit('viewer_count', {'count': count}, room=room_id)
-
-# =========================================
-# SERVE LOCAL UPLOADED FILES (dev only)
-# =========================================
-
-@app.route('/uploads/images/<filename>')
-def serve_image(filename):
-    return send_from_directory('uploads/images', filename)
-
-
-@app.route('/uploads/videos/<filename>')
-def serve_video(filename):
-    return send_from_directory('uploads/videos', filename)
 
 # =========================================
 # FRONTEND ROUTES
@@ -192,6 +111,56 @@ def watch_page():
     return render_template('watch.html')
 
 # =========================================
+# SERVE IMAGE FROM DATABASE
+# =========================================
+
+@app.route('/user-image/<int:user_id>')
+def user_image(user_id):
+    try:
+        conn   = connect_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT profile_image, profile_image_mime FROM users WHERE id = ?',
+            (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row or not row['profile_image']:
+            return '', 404
+
+        mime = row['profile_image_mime'] or 'image/jpeg'
+        return Response(row['profile_image'], mimetype=mime)
+
+    except Exception as e:
+        return '', 500
+
+# =========================================
+# SERVE VIDEO FROM DATABASE
+# =========================================
+
+@app.route('/user-video/<int:user_id>')
+def user_video(user_id):
+    try:
+        conn   = connect_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT short_video, short_video_mime FROM users WHERE id = ?',
+            (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row or not row['short_video']:
+            return '', 404
+
+        mime = row['short_video_mime'] or 'video/webm'
+        return Response(row['short_video'], mimetype=mime)
+
+    except Exception as e:
+        return '', 500
+
+# =========================================
 # SIGNUP API
 # =========================================
 
@@ -208,7 +177,10 @@ def signup():
         hashed = generate_password_hash(password)
         conn   = connect_db()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO users (email, password) VALUES (?, ?)', (email, hashed))
+        cursor.execute(
+            'INSERT INTO users (email, password) VALUES (?, ?)',
+            (email, hashed)
+        )
         conn.commit()
         conn.close()
 
@@ -280,14 +252,25 @@ def complete_profile(user_id):
         if not video:
             return jsonify({'success': False, 'message': 'Short video required'}), 400
 
-        image_path = upload_image(image, user_id)
-        video_path = upload_video(video, user_id)
+        # Read file bytes and mime types
+        image_data = image.read()
+        image_mime = image.mimetype or 'image/jpeg'
+
+        video_data = video.read()
+        video_mime = video.mimetype or 'video/webm'
 
         conn   = connect_db()
         cursor = conn.cursor()
         cursor.execute(
-            'UPDATE users SET first_name=?, last_name=?, profile_image=?, short_video=? WHERE id=?',
-            (first_name, last_name, image_path, video_path, user_id)
+            '''UPDATE users
+               SET first_name=?, last_name=?,
+                   profile_image=?, profile_image_mime=?,
+                   short_video=?,   short_video_mime=?
+               WHERE id=?''',
+            (first_name, last_name,
+             image_data, image_mime,
+             video_data, video_mime,
+             user_id)
         )
         conn.commit()
         conn.close()
@@ -306,7 +289,10 @@ def get_user(user_id):
     try:
         conn   = connect_db()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        cursor.execute(
+            'SELECT id, first_name, last_name, profile_image FROM users WHERE id = ?',
+            (user_id,)
+        )
         user = cursor.fetchone()
         conn.close()
 
@@ -319,7 +305,7 @@ def get_user(user_id):
                 'id':               user['id'],
                 'first_name':       user['first_name'],
                 'last_name':        user['last_name'],
-                'profile_image':    image_url(user['profile_image']),
+                'profile_image':    f'/user-image/{user_id}' if user['profile_image'] else '',
                 'profile_complete': bool(user['first_name'] and user['profile_image'])
             }
         })
@@ -336,21 +322,24 @@ def start_live(user_id):
     try:
         conn   = connect_db()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        cursor.execute(
+            'SELECT id, profile_image FROM users WHERE id = ?',
+            (user_id,)
+        )
         user = cursor.fetchone()
 
         if not user or not user['profile_image']:
             conn.close()
             return jsonify({'success': False, 'message': 'Complete your profile first'}), 400
 
-        cursor.execute('''
-            INSERT OR REPLACE INTO live_sessions (user_id, started_at)
-            VALUES (?, CURRENT_TIMESTAMP)
-        ''', (user_id,))
+        cursor.execute(
+            '''INSERT OR REPLACE INTO live_sessions (user_id, started_at)
+               VALUES (?, CURRENT_TIMESTAMP)''',
+            (user_id,)
+        )
         conn.commit()
         conn.close()
 
-        # Create a room for this streamer
         room_id = str(user_id)
         if room_id not in rooms:
             rooms[room_id] = set()
@@ -373,7 +362,6 @@ def stop_live(user_id):
         conn.commit()
         conn.close()
 
-        # Notify all viewers in this room that stream ended
         room_id = str(user_id)
         socketio.emit('stream_ended', {}, room=room_id)
         rooms.pop(room_id, None)
@@ -405,7 +393,7 @@ def live_users():
             'id':            user['id'],
             'first_name':    user['first_name'],
             'last_name':     user['last_name'],
-            'profile_image': image_url(user['profile_image']),
+            'profile_image': f'/user-image/{user["id"]}',
             'started_at':    user['started_at'],
             'viewer_count':  len(rooms.get(str(user['id']), set()))
         } for user in users]
@@ -427,15 +415,6 @@ def viewer_count(user_id):
 # =========================================
 # SOCKET.IO — WebRTC SIGNALING
 # =========================================
-#
-# Flow:
-#   Streamer  --[join_stream as host]-->  Server creates room
-#   Viewer    --[join_stream as viewer]--> Server adds viewer to room
-#                                          Server tells streamer "new viewer joined"
-#   Streamer  --[offer]--> Server --> Viewer    (WebRTC offer)
-#   Viewer    --[answer]--> Server --> Streamer (WebRTC answer)
-#   Both      --[ice_candidate]--> Server --> other side (ICE candidates)
-# =========================================
 
 @socketio.on('connect')
 def on_connect():
@@ -445,12 +424,10 @@ def on_connect():
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
-    # Remove viewer from any room they were in
     for room_id, viewers in list(rooms.items()):
         if sid in viewers:
             viewers.discard(sid)
             leave_room(room_id)
-            # Tell streamer a viewer left
             emit('viewer_left', {'sid': sid}, room=room_id)
             broadcast_viewer_count(room_id)
             break
@@ -458,9 +435,6 @@ def on_disconnect():
 
 @socketio.on('join_stream')
 def on_join_stream(data):
-    """
-    data = { room_id: str(streamer_user_id), role: 'host' | 'viewer' }
-    """
     room_id = str(data.get('room_id'))
     role    = data.get('role', 'viewer')
     sid     = request.sid
@@ -468,20 +442,14 @@ def on_join_stream(data):
     join_room(room_id)
 
     if role == 'host':
-        # Host joins — initialise room if needed
         if room_id not in rooms:
             rooms[room_id] = set()
         emit('joined_as_host', {'room_id': room_id})
-
     else:
-        # Viewer joins — add to room set
         if room_id not in rooms:
-            # Stream doesn't exist
             emit('stream_not_found', {})
             return
-
         rooms[room_id].add(sid)
-        # Tell the host a new viewer arrived (host needs to send an offer)
         emit('viewer_joined', {'sid': sid}, room=room_id, skip_sid=sid)
         broadcast_viewer_count(room_id)
         emit('joined_as_viewer', {'room_id': room_id})
@@ -491,21 +459,15 @@ def on_join_stream(data):
 def on_leave_stream(data):
     room_id = str(data.get('room_id'))
     sid     = request.sid
-
     if room_id in rooms:
         rooms[room_id].discard(sid)
         emit('viewer_left', {'sid': sid}, room=room_id)
         broadcast_viewer_count(room_id)
-
     leave_room(room_id)
 
 
-# ---- WebRTC signaling relay ----
-
 @socketio.on('offer')
 def on_offer(data):
-    """Streamer sends offer to a specific viewer."""
-    # data = { target_sid, sdp }
     emit('offer', {
         'sdp':        data['sdp'],
         'sender_sid': request.sid
@@ -514,8 +476,6 @@ def on_offer(data):
 
 @socketio.on('answer')
 def on_answer(data):
-    """Viewer sends answer back to streamer."""
-    # data = { target_sid, sdp }
     emit('answer', {
         'sdp':        data['sdp'],
         'sender_sid': request.sid
@@ -524,8 +484,6 @@ def on_answer(data):
 
 @socketio.on('ice_candidate')
 def on_ice_candidate(data):
-    """Relay ICE candidates between streamer and viewer."""
-    # data = { target_sid, candidate }
     emit('ice_candidate', {
         'candidate':  data['candidate'],
         'sender_sid': request.sid
