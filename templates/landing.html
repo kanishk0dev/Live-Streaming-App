@@ -58,6 +58,21 @@
             headerRight.innerHTML = `
                 <button class="logout-btn" onclick="logout()">Logout</button>
             `;
+            // Check profile completion — disable Go Live if not complete
+            fetch(`/get-user/${userId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.user.profile_complete) {
+                        goLiveBtn.classList.add("disabled");
+                        goLiveIcon.textContent = "🚫";
+                        goLiveLabel.textContent = "Complete Profile";
+                        goLiveBtn.onclick = () => {
+                            showToast("Please complete your profile first", "error");
+                            setTimeout(() => window.location.href = "/profile-page", 1200);
+                        };
+                    }
+                })
+                .catch(() => {});
         } else {
             headerRight.innerHTML = `
                 <button class="login-header-btn" onclick="window.location.href='/login-page'">Login</button>
