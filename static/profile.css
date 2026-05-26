@@ -147,10 +147,8 @@ h1 {
 
 .input-box input::placeholder { color: #555; }
 
-/* Upload Section */
 .upload-section { margin-bottom: 16px; }
 
-/* Image Preview */
 .image-preview-wrap {
     width: 100%;
     height: 200px;
@@ -202,7 +200,6 @@ h1 {
     justify-content: center;
 }
 
-/* Video Preview */
 .video-preview-wrap {
     width: 100%;
     border-radius: 18px;
@@ -233,7 +230,6 @@ h1 {
     display: block;
 }
 
-/* Timer Bar */
 .timer-bar-wrap {
     margin-top: 10px;
     background: #1e1e1e;
@@ -262,7 +258,6 @@ h1 {
     white-space: nowrap;
 }
 
-/* Video Buttons */
 .video-buttons {
     display: flex;
     gap: 10px;
@@ -309,7 +304,6 @@ h1 {
 
 .upload-btn:hover { background: #2a2a2a; }
 
-/* Go Live Button */
 .live-btn {
     width: 100%;
     padding: 17px;
@@ -336,7 +330,6 @@ h1 {
     transform: none;
 }
 
-/* Toast */
 .toast {
     position: fixed;
     bottom: 30px;

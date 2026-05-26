@@ -10,16 +10,16 @@
 <body>
 <div class="mobile-container">
 
-    <!-- Stream Video -->
+    
     <video id="remoteVideo" autoplay playsinline></video>
 
-    <!-- Connecting overlay -->
+    
     <div class="overlay" id="overlay">
         <div class="spinner"></div>
         <p id="overlayText">Connecting to stream...</p>
     </div>
 
-    <!-- Stream ended overlay -->
+    
     <div class="ended-overlay" id="endedOverlay" style="display:none;">
         <div class="ended-icon">📡</div>
         <h2>Stream Ended</h2>
@@ -27,7 +27,7 @@
         <button onclick="window.location.href='/landing-page'">Back to Live Users</button>
     </div>
 
-    <!-- Top Bar -->
+    
     <div class="top-bar">
         <button class="back-btn" onclick="leaveStream()">✕</button>
         <div class="streamer-info" id="streamerInfo">
@@ -48,14 +48,14 @@
 </div>
 
 <script>
-    // Get streamer ID from URL: /watch-page?id=123
+    
     const params     = new URLSearchParams(window.location.search);
     const streamerId = params.get('id');
     const viewerUserId = localStorage.getItem('userId');
 
     if (!streamerId) window.location.href = '/landing-page';
 
-    // Show guest banner if not logged in
+    
     if (!viewerUserId) {
         const banner = document.createElement('div');
         banner.style.cssText = 'position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(16,16,16,0.95);border-top:1px solid #2a2a2a;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;z-index:50;backdrop-filter:blur(10px);';
@@ -67,18 +67,18 @@
     }
 
     const socket      = io();
-    let   streamerSid = null;   // socket ID of the streamer
-    let   pc          = null;   // our RTCPeerConnection
+    let   streamerSid = null;   
+    let   pc          = null;   
 
-    // ---- DOM ----
+    
     const remoteVideo  = document.getElementById('remoteVideo');
     const overlay      = document.getElementById('overlay');
     const overlayText  = document.getElementById('overlayText');
     const endedOverlay = document.getElementById('endedOverlay');
 
-    // ======================
-    // Load streamer info
-    // ======================
+    
+    
+    
     async function loadStreamerInfo() {
         try {
             const res  = await fetch(`/get-user/${streamerId}`);
@@ -92,22 +92,22 @@
         } catch(e) {}
     }
 
-    // ======================
-    // Join stream room as viewer
-    // ======================
+    
+    
+    
     function joinStream() {
         socket.emit('join_stream', { room_id: streamerId, role: 'viewer' });
     }
 
-    // ======================
-    // WebRTC — handle incoming offer from streamer
-    // ======================
+    
+    
+    
     async function handleOffer(sdp, senderSid) {
         streamerSid = senderSid;
 
         pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
-        // When we get remote tracks, show the video
+        
         pc.ontrack = (e) => {
             if (e.streams && e.streams[0]) {
                 remoteVideo.srcObject = e.streams[0];
@@ -135,9 +135,9 @@
         socket.emit('answer', { target_sid: streamerSid, sdp: pc.localDescription });
     }
 
-    // ======================
-    // Leave stream
-    // ======================
+    
+    
+    
     function leaveStream() {
         socket.emit('leave_stream', { room_id: streamerId });
         if (pc) pc.close();
@@ -155,9 +155,9 @@
         overlay.style.opacity = '1';
     }
 
-    // ======================
-    // Socket events
-    // ======================
+    
+    
+    
     socket.on('joined_as_viewer', () => {
         overlayText.textContent = 'Waiting for stream...';
     });
@@ -187,7 +187,7 @@
         endedOverlay.style.display = 'flex';
     });
 
-    // Start
+    
     loadStreamerInfo();
     joinStream();
 </script>

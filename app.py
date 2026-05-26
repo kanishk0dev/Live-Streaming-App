@@ -9,33 +9,19 @@ import os
 import base64
 import mimetypes
 
-# =========================================
-# APP CONFIG
-# =========================================
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'livestream-secret-key-2024')
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# =========================================
-# IN-MEMORY: rooms[streamer_user_id] = set of viewer socket_ids
-# =========================================
-
 rooms = {}
 
-# =========================================
-# DATABASE
-# =========================================
-
 DATABASE = os.environ.get('DATABASE_PATH', 'database.db')
-
 
 def connect_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
-
 
 def init_db():
     conn = connect_db()
@@ -67,20 +53,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 init_db()
-
-# =========================================
-# HELPERS
-# =========================================
 
 def broadcast_viewer_count(room_id):
     count = len(rooms.get(room_id, set()))
     socketio.emit('viewer_count', {'count': count}, room=room_id)
-
-# =========================================
-# FRONTEND ROUTES
-# =========================================
 
 @app.route('/')
 def welcome_page():
@@ -110,10 +87,6 @@ def go_live_page():
 def watch_page():
     return render_template('watch.html')
 
-# =========================================
-# SERVE IMAGE FROM DATABASE
-# =========================================
-
 @app.route('/user-image/<int:user_id>')
 def user_image(user_id):
     try:
@@ -135,10 +108,6 @@ def user_image(user_id):
     except Exception as e:
         return '', 500
 
-# =========================================
-# SERVE VIDEO FROM DATABASE
-# =========================================
-
 @app.route('/user-video/<int:user_id>')
 def user_video(user_id):
     try:
@@ -159,10 +128,6 @@ def user_video(user_id):
 
     except Exception as e:
         return '', 500
-
-# =========================================
-# SIGNUP API
-# =========================================
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -190,10 +155,6 @@ def signup():
         return jsonify({'success': False, 'message': 'User already exists'}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-# =========================================
-# LOGIN API
-# =========================================
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -233,10 +194,6 @@ def login():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================
-# COMPLETE PROFILE API
-# =========================================
-
 @app.route('/complete-profile/<int:user_id>', methods=['POST'])
 def complete_profile(user_id):
     try:
@@ -252,7 +209,6 @@ def complete_profile(user_id):
         if not video:
             return jsonify({'success': False, 'message': 'Short video required'}), 400
 
-        # Read file bytes and mime types
         image_data = image.read()
         image_mime = image.mimetype or 'image/jpeg'
 
@@ -279,10 +235,6 @@ def complete_profile(user_id):
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-# =========================================
-# GET USER API
-# =========================================
 
 @app.route('/get-user/<int:user_id>')
 def get_user(user_id):
@@ -312,10 +264,6 @@ def get_user(user_id):
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-# =========================================
-# START LIVE API
-# =========================================
 
 @app.route('/start-live/<int:user_id>', methods=['POST'])
 def start_live(user_id):
@@ -349,10 +297,6 @@ def start_live(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================
-# STOP LIVE API
-# =========================================
-
 @app.route('/stop-live/<int:user_id>', methods=['POST', 'GET'])
 def stop_live(user_id):
     try:
@@ -370,10 +314,6 @@ def stop_live(user_id):
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-# =========================================
-# LIVE USERS API
-# =========================================
 
 @app.route('/live-users')
 def live_users():
@@ -403,23 +343,14 @@ def live_users():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================
-# VIEWER COUNT API
-# =========================================
-
 @app.route('/viewer-count/<int:user_id>')
 def viewer_count(user_id):
     count = len(rooms.get(str(user_id), set()))
     return jsonify({'success': True, 'count': count})
 
-# =========================================
-# SOCKET.IO — WebRTC SIGNALING
-# =========================================
-
 @socketio.on('connect')
 def on_connect():
     pass
-
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -431,7 +362,6 @@ def on_disconnect():
             emit('viewer_left', {'sid': sid}, room=room_id)
             broadcast_viewer_count(room_id)
             break
-
 
 @socketio.on('join_stream')
 def on_join_stream(data):
@@ -454,7 +384,6 @@ def on_join_stream(data):
         broadcast_viewer_count(room_id)
         emit('joined_as_viewer', {'room_id': room_id})
 
-
 @socketio.on('leave_stream')
 def on_leave_stream(data):
     room_id = str(data.get('room_id'))
@@ -465,14 +394,12 @@ def on_leave_stream(data):
         broadcast_viewer_count(room_id)
     leave_room(room_id)
 
-
 @socketio.on('offer')
 def on_offer(data):
     emit('offer', {
         'sdp':        data['sdp'],
         'sender_sid': request.sid
     }, room=data['target_sid'])
-
 
 @socketio.on('answer')
 def on_answer(data):
@@ -481,17 +408,12 @@ def on_answer(data):
         'sender_sid': request.sid
     }, room=data['target_sid'])
 
-
 @socketio.on('ice_candidate')
 def on_ice_candidate(data):
     emit('ice_candidate', {
         'candidate':  data['candidate'],
         'sender_sid': request.sid
     }, room=data['target_sid'])
-
-# =========================================
-# RUN APP
-# =========================================
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

@@ -15,7 +15,7 @@
             <h1>Complete Profile</h1>
             <p class="subtitle">Add your details and upload a short intro video.</p>
 
-            <!-- Full Name -->
+            
             <div class="section-label">Your Name</div>
             <div class="name-row">
                 <div class="input-box">
@@ -26,7 +26,7 @@
                 </div>
             </div>
 
-            <!-- Profile Picture -->
+            
             <div class="section-label">Profile Picture</div>
             <div class="upload-section">
                 <input type="file" id="profileImage" accept="image/*" hidden>
@@ -40,7 +40,7 @@
                 </div>
             </div>
 
-            <!-- Video Section -->
+            
             <div class="section-label">Short Intro Video <span class="badge">10 sec</span></div>
             <div class="upload-section">
                 <input type="file" id="videoUpload" accept="video/*" hidden>
@@ -52,14 +52,14 @@
                         <p>No video selected</p>
                     </div>
                 </div>
-                <!-- Timer Bar -->
+                
                 <div class="timer-bar-wrap" id="timerBarWrap" style="display:none;">
                     <div class="timer-bar" id="timerBar"></div>
                     <span class="timer-text" id="timerText">10s</span>
                 </div>
             </div>
 
-            <!-- Video Buttons -->
+            
             <div class="video-buttons">
                 <button class="shoot-btn" id="shootBtn" onclick="handleShoot()">
                     🔴 Shoot
@@ -69,13 +69,13 @@
                 </button>
             </div>
 
-            <!-- Upload Progress -->
+            
             <div class="upload-progress-wrap" id="uploadProgressWrap" style="display:none;">
                 <div class="upload-progress-bar" id="uploadProgressBar"></div>
                 <span class="upload-progress-text" id="uploadProgressText">Uploading... 0%</span>
             </div>
 
-            <!-- Go Live -->
+            
             <button class="live-btn" id="liveBtn" onclick="completeProfile()">
                 Go Live 🚀
             </button>
@@ -91,30 +91,30 @@
         let timerInterval;
         let activeStream   = null;
 
-        // ========================= Guard =========================
+        
         const userId = localStorage.getItem("userId");
         if (!userId) window.location.href = "/login-page";
 
-        // ========================= Load existing profile =========================
+        
         window.addEventListener("load", async () => {
             try {
                 const res  = await fetch(`/get-user/${userId}`);
                 const data = await res.json();
                 if (data.success && data.user.profile_complete) {
-                    // Pre-fill name
+                    
                     document.getElementById("firstName").value = data.user.first_name || "";
                     document.getElementById("lastName").value  = data.user.last_name  || "";
 
-                    // Show existing profile image from DB
+                    
                     if (data.user.profile_image) {
                         const preview = document.getElementById("imagePreview");
-                        preview.src = data.user.profile_image;  // /user-image/<id>
+                        preview.src = data.user.profile_image;  
                         preview.style.display = "block";
                         document.getElementById("imagePlaceholder").style.display = "none";
                         document.getElementById("imageOverlay").style.display     = "flex";
                     }
 
-                    // Show existing video from DB
+                    
                     const rec = document.getElementById("recordedPreview");
                     rec.src = `/user-video/${userId}`;
                     rec.style.display = "block";
@@ -123,11 +123,11 @@
                     showToast("Existing profile loaded — update if needed", "info");
                 }
             } catch(e) {
-                // No existing profile, start fresh
+                
             }
         });
 
-        // ========================= Profile Image =========================
+        
         function uploadProfileImage() {
             document.getElementById("profileImage").click();
         }
@@ -136,7 +136,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // Validate size — max 5MB
+            
             if (file.size > 5 * 1024 * 1024) {
                 showToast("Image must be under 5MB", "error");
                 return;
@@ -150,7 +150,7 @@
             document.getElementById("imageOverlay").style.display     = "flex";
         });
 
-        // ========================= Upload Video =========================
+        
         function uploadVideo() {
             document.getElementById("videoUpload").click();
         }
@@ -159,7 +159,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // Validate size — max 50MB
+            
             if (file.size > 50 * 1024 * 1024) {
                 showToast("Video must be under 50MB", "error");
                 return;
@@ -186,7 +186,7 @@
             rec.style.display = "block";
         }
 
-        // ========================= Shoot Video =========================
+        
         async function handleShoot() {
             if (isRecording) stopRecording();
             else await startRecording();
@@ -257,7 +257,7 @@
             if (stream) stream.getTracks().forEach(t => t.stop());
         }
 
-        // ========================= Timer Bar =========================
+        
         function startTimerBar(seconds) {
             const wrap = document.getElementById("timerBarWrap");
             const bar  = document.getElementById("timerBar");
@@ -282,7 +282,7 @@
             document.getElementById("timerBarWrap").style.display = "none";
         }
 
-        // ========================= Complete Profile =========================
+        
         async function completeProfile() {
             const firstName = document.getElementById("firstName").value.trim();
             const lastName  = document.getElementById("lastName").value.trim();
@@ -292,7 +292,7 @@
                 return;
             }
 
-            // If no new image selected, check if one already exists in DB
+            
             const imagePreviewSrc = document.getElementById("imagePreview").src;
             const hasExistingImage = imagePreviewSrc && imagePreviewSrc.includes("/user-image/");
 
@@ -301,7 +301,7 @@
                 return;
             }
 
-            // If no new video selected, check if one already exists in DB
+            
             const recSrc = document.getElementById("recordedPreview").src;
             const hasExistingVideo = recSrc && recSrc.includes("/user-video/");
 
@@ -310,7 +310,7 @@
                 return;
             }
 
-            // If nothing changed, just go to landing
+            
             if (!selectedProfileImage && !recordedVideoBlob && hasExistingImage && hasExistingVideo) {
                 showToast("Profile up to date!", "success");
                 setTimeout(() => window.location.href = "/landing-page", 800);
@@ -328,7 +328,7 @@
             if (selectedProfileImage) {
                 formData.append("profile_image", selectedProfileImage);
             } else {
-                // Re-fetch existing image blob from DB and re-send it
+                
                 const imgRes  = await fetch(`/user-image/${userId}`);
                 const imgBlob = await imgRes.blob();
                 formData.append("profile_image", imgBlob, "profile.jpg");
@@ -337,13 +337,13 @@
             if (recordedVideoBlob) {
                 formData.append("short_video", recordedVideoBlob, "video.webm");
             } else {
-                // Re-fetch existing video blob from DB and re-send it
+                
                 const vidRes  = await fetch(`/user-video/${userId}`);
                 const vidBlob = await vidRes.blob();
                 formData.append("short_video", vidBlob, "video.webm");
             }
 
-            // Show upload progress using XHR (fetch doesn't support progress)
+            
             try {
                 await uploadWithProgress(`/complete-profile/${userId}`, formData);
                 showToast("Profile saved! Going live...", "success");
@@ -356,7 +356,7 @@
             }
         }
 
-        // ========================= XHR with Progress =========================
+        
         function uploadWithProgress(url, formData) {
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
@@ -402,7 +402,7 @@
             document.getElementById("uploadProgressWrap").style.display = "none";
         }
 
-        // ========================= Toast =========================
+        
         function showToast(msg, type) {
             const old = document.querySelector(".toast");
             if (old) old.remove();

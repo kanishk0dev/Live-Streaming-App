@@ -157,7 +157,6 @@ h1 {
 
 .signup-text span:hover { text-decoration: underline; }
 
-/* Toast */
 .toast {
     position: fixed;
     bottom: 30px;

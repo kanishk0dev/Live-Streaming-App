@@ -15,7 +15,7 @@
             <div class="back-btn" onclick="window.location.href='/login-page'">← Back</div>
 
             <h1>Signup</h1>
-            <p class="subtitle">Create your account.</p>
+            <p class="subtitle">Create your account and start your live profile.</p>
 
             <div class="input-box">
                 <input type="email" id="email" placeholder="Enter Email" autocomplete="email">
@@ -75,7 +75,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Save email so login page auto-fills it
+                    
                     localStorage.setItem("savedEmail", email);
                     showToast("Account created! Please login.", "success");
                     setTimeout(() => {

@@ -66,6 +66,15 @@ body {
     z-index: 2;
 }
 
+.logo-wrap {
+    margin-bottom: 28px;
+}
+
+.logo-icon {
+    font-size: 52px;
+    filter: drop-shadow(0 0 18px rgba(255,62,120,0.5));
+}
+
 h1 {
     color: white;
     font-size: 44px;

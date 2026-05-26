@@ -68,7 +68,6 @@ body {
     z-index: 0;
 }
 
-/* Header */
 .header {
     position: sticky;
     top: 0;
@@ -88,6 +87,8 @@ body {
     align-items: center;
     gap: 10px;
 }
+
+.app-logo { font-size: 22px; }
 
 .header h1 {
     color: white;
@@ -112,7 +113,6 @@ body {
     color: #ff3e78;
 }
 
-/* Live Count */
 .live-count {
     color: #666;
     font-size: 13px;
@@ -139,7 +139,6 @@ body {
     50% { opacity: 0.4; }
 }
 
-/* Users Container */
 .users-container {
     padding: 12px 18px;
     display: flex;
@@ -149,7 +148,6 @@ body {
     z-index: 2;
 }
 
-/* User Card */
 .user-card {
     width: 100%;
     background: #161616;
@@ -173,14 +171,12 @@ body {
     background: #1a1a1a;
 }
 
-/* Left User */
 .left-user {
     display: flex;
     align-items: center;
     gap: 14px;
 }
 
-/* Avatar */
 .avatar-wrap {
     position: relative;
     flex-shrink: 0;
@@ -208,7 +204,6 @@ body {
     50% { transform: scale(1.08); opacity: 0.15; }
 }
 
-/* User Details */
 .user-details h2 {
     color: white;
     font-size: 17px;
@@ -235,7 +230,6 @@ body {
     animation: blink 1.5s infinite;
 }
 
-/* Watch Button */
 .watch-btn {
     background: transparent;
     border: 1px solid #ff3e78;
@@ -254,7 +248,6 @@ body {
     color: white;
 }
 
-/* Empty / Loading State */
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -298,7 +291,6 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Floating Go Live Button */
 .go-live-wrap {
     position: fixed;
     bottom: 30px;
@@ -358,7 +350,6 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* Guest tooltip */
 .guest-tooltip {
     position: fixed;
     bottom: 115px;
@@ -398,7 +389,6 @@ body {
     transform: rotate(45deg);
 }
 
-/* Toast */
 .toast {
     position: fixed;
     bottom: 30px;

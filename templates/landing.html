@@ -11,7 +11,7 @@
         <div class="top-glow"></div>
         <div class="bottom-glow"></div>
 
-        <!-- Header -->
+        
         <div class="header">
             <div class="header-left">
                 <h1>Live Users</h1>
@@ -19,10 +19,10 @@
             <div class="header-right" id="headerRight"></div>
         </div>
 
-        <!-- Live Count -->
+        
         <p class="live-count" id="liveCount">Discovering creators...</p>
 
-        <!-- Users List -->
+        
         <div class="users-container" id="usersContainer">
             <div class="loading-state">
                 <div class="loading-spinner"></div>
@@ -30,7 +30,7 @@
             </div>
         </div>
 
-        <!-- Floating Go Live Button -->
+        
         <div class="go-live-wrap">
             <button id="goLiveBtn" class="go-live-btn" onclick="goLive()">
                 <span id="goLiveIcon">📷</span>
@@ -38,7 +38,7 @@
             <span class="go-live-label" id="goLiveLabel">Go Live</span>
         </div>
 
-        <!-- Guest Tooltip -->
+        
         <div class="guest-tooltip" id="guestTooltip" style="display:none;">
             Login to start a Live Stream
         </div>
@@ -52,12 +52,12 @@
         const headerRight = document.getElementById("headerRight");
         const guestTooltip = document.getElementById("guestTooltip");
 
-        // ========================= Header =========================
+        
         if (userId) {
             headerRight.innerHTML = `
                 <button class="logout-btn" onclick="logout()">Logout</button>
             `;
-            // Check profile completion — disable Go Live if not complete
+            
             fetch(`/get-user/${userId}`)
                 .then(r => r.json())
                 .then(data => {
@@ -76,7 +76,7 @@
             headerRight.innerHTML = `
                 <button class="login-header-btn" onclick="window.location.href='/login-page'">Login</button>
             `;
-            // Guest mode: disable go live
+            
             goLiveBtn.classList.add("disabled");
             goLiveIcon.textContent = "🚫";
             goLiveLabel.textContent = "Login to Go Live";
@@ -87,7 +87,7 @@
             window.location.href = "/";
         }
 
-        // ========================= Load Live Users =========================
+        
         async function loadUsers() {
             try {
                 const response = await fetch("/live-users");
@@ -145,7 +145,7 @@
             window.location.href = `/watch-page?id=${id}`;
         }
 
-        // ========================= Go Live =========================
+        
         function goLive() {
             if (!userId) {
                 guestTooltip.style.display = "block";
@@ -159,7 +159,7 @@
             window.location.href = "/go-live-page";
         }
 
-        // ========================= Toast =========================
+        
         function showToast(msg, type) {
             const toast = document.createElement("div");
             toast.className = "toast " + (type || "");
@@ -172,9 +172,9 @@
             }, 2500);
         }
 
-        // Start
+        
         loadUsers();
-        // Refresh every 30s
+        
         setInterval(loadUsers, 30000);
     </script>
 </body>

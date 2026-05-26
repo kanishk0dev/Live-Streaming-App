@@ -17,7 +17,7 @@
         <p>Camera not available</p>
     </div>
 
-    <!-- Top Bar -->
+    
     <div class="top-bar">
         <button class="back-btn" onclick="exitLive()">✕</button>
         <div class="status-pill" id="statusPill">
@@ -29,19 +29,19 @@
         </div>
     </div>
 
-    <!-- Side Controls -->
+    
     <div class="side-controls">
         <button class="side-btn" onclick="flipCamera()" title="Flip">🔄</button>
         <button class="side-btn" id="muteBtn" onclick="toggleMute()" title="Mute">🎤</button>
     </div>
 
-    <!-- Viewers -->
+    
     <div class="viewers-wrap" id="viewersWrap" style="display:none;">
         <span>👁</span>
         <span id="viewerCount">0</span>
     </div>
 
-    <!-- Bottom -->
+    
     <div class="bottom-controls">
         <div class="live-btn-wrap">
             <button id="liveBtn" class="live-btn" onclick="toggleLive()">
@@ -59,7 +59,7 @@
     const userId   = localStorage.getItem('userId');
     if (!userId) window.location.href = '/login-page';
 
-    // ---- State ----
+    
     let stream        = null;
     let isLive        = false;
     let isMuted       = false;
@@ -67,13 +67,13 @@
     let timerInterval = null;
     let seconds       = 0;
 
-    // peer connections: { viewer_sid: RTCPeerConnection }
+    
     const peers = {};
 
-    // ---- Socket ----
+    
     const socket = io();
 
-    // ---- DOM ----
+    
     const camera      = document.getElementById('liveCamera');
     const liveBtn     = document.getElementById('liveBtn');
     const liveBtnInner= document.getElementById('liveBtnInner');
@@ -86,9 +86,9 @@
     const viewersWrap = document.getElementById('viewersWrap');
     const viewerCount = document.getElementById('viewerCount');
 
-    // ======================
-    // Camera
-    // ======================
+    
+    
+    
     async function startCamera() {
         try {
             if (stream) stream.getTracks().forEach(t => t.stop());
@@ -106,7 +106,7 @@
     async function flipCamera() {
         facingMode = facingMode === 'user' ? 'environment' : 'user';
         await startCamera();
-        // Update existing peer connections with new tracks
+        
         for (const [sid, pc] of Object.entries(peers)) {
             const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
             const vTrack = stream.getVideoTracks()[0];
@@ -122,9 +122,9 @@
         document.getElementById('muteBtn').classList.toggle('active-ctrl', isMuted);
     }
 
-    // ======================
-    // Go Live toggle
-    // ======================
+    
+    
+    
     async function toggleLive() {
         if (!isLive) await startLive();
         else stopLive();
@@ -133,12 +133,12 @@
     async function startLive() {
         if (!stream) { showToast('Camera not ready', 'error'); return; }
 
-        // Register live session on server
+        
         const res  = await fetch(`/start-live/${userId}`, { method: 'POST' });
         const data = await res.json();
         if (!data.success) { showToast(data.message, 'error'); return; }
 
-        // Join Socket.IO room as host
+        
         socket.emit('join_stream', { room_id: userId, role: 'host' });
 
         isLive = true;
@@ -161,10 +161,10 @@
     }
 
     function stopLive() {
-        // Notify server
+        
         fetch(`/stop-live/${userId}`, { method: 'POST' });
 
-        // Close all peer connections
+        
         for (const pc of Object.values(peers)) pc.close();
         Object.keys(peers).forEach(k => delete peers[k]);
 
@@ -189,14 +189,14 @@
         window.location.href = '/landing-page';
     }
 
-    // ======================
-    // WebRTC — create offer for each new viewer
-    // ======================
+    
+    
+    
     async function createOffer(viewerSid) {
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         peers[viewerSid] = pc;
 
-        // Add all local tracks
+        
         stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
         pc.onicecandidate = (e) => {
@@ -217,9 +217,9 @@
         socket.emit('offer', { target_sid: viewerSid, sdp: pc.localDescription });
     }
 
-    // ======================
-    // Socket events
-    // ======================
+    
+    
+    
     socket.on('viewer_joined', async ({ sid }) => {
         await createOffer(sid);
     });
@@ -247,9 +247,9 @@
         viewerCount.textContent = count;
     });
 
-    // ======================
-    // Helpers
-    // ======================
+    
+    
+    
     function formatTime(s) {
         return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
     }
@@ -265,7 +265,7 @@
         setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2500);
     }
 
-    // Safety: stop live if tab is closed
+    
     window.addEventListener('beforeunload', () => {
         if (isLive) navigator.sendBeacon(`/stop-live/${userId}`);
     });

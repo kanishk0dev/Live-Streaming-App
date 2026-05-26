@@ -37,7 +37,6 @@ body {
     background: #000;
 }
 
-/* Connecting overlay */
 .overlay {
     position: absolute;
     inset: 0;
@@ -67,7 +66,6 @@ body {
     font-size: 15px;
 }
 
-/* Stream ended overlay */
 .ended-overlay {
     position: absolute;
     inset: 0;
@@ -108,7 +106,6 @@ body {
     cursor: pointer;
 }
 
-/* Top Bar */
 .top-bar {
     position: absolute;
     top: 0;
@@ -141,7 +138,6 @@ body {
 
 .back-btn:hover { background: rgba(255,62,120,0.4); }
 
-/* Streamer info */
 .streamer-info {
     display: flex;
     align-items: center;
@@ -192,7 +188,6 @@ body {
     50% { opacity: 0.3; }
 }
 
-/* Viewers pill */
 .viewers-pill {
     display: flex;
     align-items: center;
